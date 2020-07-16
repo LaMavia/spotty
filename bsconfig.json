@@ -1,0 +1,30 @@
+{
+  "name": "spotty",
+  "version": "0.1.0",
+  "sources": {
+    "dir": "src",
+    "subdirs": true
+  },
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
+  "suffix": ".bs.js",
+  "bs-dependencies": [
+    "child-reprocess",
+    "rentgen",
+    "reason-future",
+    "decco",
+    "bs-fetch",
+    "bs-puppeteer",
+    "@ahrefs/bs-dotenv"
+  ],
+  "ppx-flags": [
+    "decco/ppx"
+  ],
+  "warnings": {
+    "error": "+101"
+  },
+  "namespace": true,
+  "refmt": 3
+}
