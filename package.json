@@ -18,6 +18,7 @@
     "@ahrefs/bs-dotenv": "^2.0.0",
     "bs-fetch": "^0.6.2",
     "bs-puppeteer": "^0.13.0",
+    "bs-webapi": "^0.17.1",
     "child-reprocess": "^0.1.1",
     "decco": "^1.2.1",
     "dotenv": "^8.2.0",
