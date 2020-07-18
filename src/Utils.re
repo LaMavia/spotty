@@ -9,7 +9,6 @@ let (>>|) = (a, f) => Js.Promise.catch(a => Js.Promise.resolve(f(a)), a);
 let (<.>): ('b => 'c, 'a => 'b, 'a) => 'c = (g, f, a) => a->f->g;
 let (|?): ('t, 't => 'a, 'b) => 'a = (v, f, _) => f(v);
 
-let (>=>) = Belt.Result.map;
 /**
  * `Future.map` operator
  */
@@ -86,32 +85,33 @@ let cos: ((array(int), array(int))) => option(float) =
   };
 
 let sync_future_consume = (items, f) => {
-  let rec aux = xs => 
+  let rec aux = (a, xs) => 
     switch (xs) {
     | []         => 
-      Future.value(Error("finish"))
+      Future.value(a)
     | [h, ...rs] =>
-      f(h)
-        ->Future.map(_ => rs)
-        ->Future.flatMap(aux)
+      f(h) -> Future.map(a => (a, rs))
+           -> Future.flatMap(((a, rs)) => aux(a, rs))
     }
 
-  aux(items)
+  let [hd, ...rs] = items;
+  f(hd) -> Future.flatMap(aux(_, items))
 };
 
-let get_null_exn = n => 
-  n -> Js.nullToOption 
-    -> Belt.Option.getExn
+let sync_future_map = (items, f) => {
+  let rec aux = (ys, xs) => 
+    switch (xs) {
+    | []         => 
+      Future.value(ys)
+    | [h, ...rs] =>
+      f(h) -> Future.map(a => (a, rs))
+           -> Future.flatMap(((a, rs)) => aux([a] @ ys, rs))
+    }
 
-let select_all = (page, selector) => {
-  open BsPuppeteer;
-  // open Webapi;
-
-  page->Page.selectAllEval(
-    selector,
-    Webapi.Dom.NodeList.toArray
-  );
+  let [hd, ...rs] = items;
+  f(hd) -> Future.flatMap(a => aux([a], rs))
 };
+
 
 /**
  * Folds a list into a tuple of the given value and an list element
@@ -129,3 +129,12 @@ let foldl1h = (arr, a, f) => {
     | [hd, ...rs] => Some(aux((a, hd), rs))
   };
 }
+
+let foldl1_arr = (arr, f) => {
+  let h = arr[0]
+  let rs = Belt.Array.sliceToEnd(arr, 1)
+
+  Belt.Array.reduce(rs, h, f)
+}
+
+let const = a => a

@@ -3,30 +3,31 @@ open ChildReprocess.Util;
 open ChildReprocess.StdStream;
 open Utils;
 Dotenv.config();
-/*
- let process =
-   ChildReprocess.spawn(
-     "youtube-dl",
-     [|"https://www.youtube.com/watch?v=15CXY6JAqbk"|],
-     (),
-   );
 
- process
-   ->child_stdout
-   ->Readable.on_data(Js.log <.> Node_buffer.toString);
+/**
+ * Notes:
+ * 1. clean up the `genExn` shit-storm
+ * 2. clean up dead code
+ * 3. make clear stage divisions
+ * 4. fix `undefine-s` in log while downloading
+ * 5. make a better, cleaner, downloading interface (title (and/or) dist, percent, ?speed? ; clearing console (one-line output))
  */
 let main = () => {
   Spotify.fetch_access_token()
   >>- Belt.Result.getExn
-  >>= Spotify.fetch_playlist(_, "37i9dQZF1DWVzZlRWgqAGH")
-  >>- Belt.Result.map(_, Youtube.get_playlist);
-} /* Youtube.time_of_string("2:05")->Js.lo*/;
+  >>= Spotify.fetch_playlist(_, "2qsfiBNlB3HYOsOmXTk1aS")
+  >>= Youtube.get_playlist
+  >>- (
+    f =>
+      f->Future.get(ts => {
+        ts
+        ->sync_future_consume(t =>
+            Dl.get_format("https://www.youtube.com/watch?v=MeIv1AaxCa0")
+            ->Future.flatMap(Dl.download("output/", t))
+          )
+        ->ignore
+      })
+  );
+};
 
-// Spotify.make_playlist_url("5ecOjPPqAXt7jwjQrS7A7T")->Js.log
-// Spotify.make_auth->Lazy.force->Js.log
-// (Env.client_id, Env.client_secret) <%> Js.log
-
-// Utils.sync_future_consume(List.init(5000, a => a*2), a =>
-//   Future.delay(5, () => Js.log(a*2))
-// );
-main()
+main();

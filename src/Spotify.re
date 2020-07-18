@@ -87,5 +87,5 @@ let fetch_playlist = (token, id) => {
     )
   )
   >>= Response.json
-  >>- playlist_res_decode
+  >>- (Belt.Result.getExn <.> playlist_res_decode)
 }

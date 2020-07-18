@@ -27,7 +27,7 @@
     "error": "+101"
   },
   "bsc-flags": [
-    "-bs-g"
+    
   ],
   "namespace": true,
   "refmt": 3

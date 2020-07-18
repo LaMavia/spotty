@@ -6,12 +6,6 @@ type track = {
   duration: int,
 };
 
-let time_of_string = str =>
-  str
-  ->Js.String2.split(":")
-  ->Belt.Array.map(int_of_string)
-  ->Belt.Array.reduce(0, (a, n) => a * 60 + n);
-
 let get_track: (BsPuppeteer.Page.t, Spotify.track) => Future.t(option(track)) =
   (p, tr) => {
     open BsPuppeteer;
@@ -25,8 +19,6 @@ let get_track: (BsPuppeteer.Page.t, Spotify.track) => Future.t(option(track)) =
 
     let time_selector = "[aria-label].ytd-thumbnail-overlay-time-status-renderer";
     let title_selector = "a#video-title";
-    /*
-     let third_duration_xpath = "/html/body/ytd-app/div/ytd-page-manager/ytd-search/div[1]/ytd-two-column-search-results-renderer/div/ytd-section-list-renderer/div[2]/ytd-item-section-renderer/div[3]/ytd-video-renderer[3]/div[1]/ytd-thumbnail/a/div[1]/ytd-thumbnail-overlay-time-status-renderer/span";*/
 
     let get_best_track = ((acc_cos, acc_t), t) => {
       let dt = abs(duration - t.duration)->float_of_int;
@@ -105,6 +97,7 @@ let get_track: (BsPuppeteer.Page.t, Spotify.track) => Future.t(option(track)) =
       a =>
         switch (a) {
         | Some((_c_t, t)) =>
+          let t = {...t, title};
           Js.log(t);
           Some(t);
         | None => None
@@ -113,22 +106,26 @@ let get_track: (BsPuppeteer.Page.t, Spotify.track) => Future.t(option(track)) =
   };
 
 let get_playlist = (res: Spotify.playlist_res) => {
-  BsPuppeteer.(
-    Belt.(
-      Puppeteer.launch()
-      >>= Browser.newPage
-      >>- (
-        p => {
-          res.items
-          ->List.fromArray
-          ->List.map(it => it.track)
-          ->Utils.sync_future_consume(get_track(p))
-          ->Future.tap(_ => {
-              BsPuppeteer.Browser.close(p->Page.browser)->ignore;
-              Js.log("we done, baby!");
-            });
-        }
-      )
-    )
-  );
+  open BsPuppeteer;
+  open Belt;
+  let p =
+    Puppeteer.launch()
+    >>= Browser.newPage
+    >>- (
+      p => {
+        res.items
+        ->List.fromArray
+        ->List.map(it => it.track)
+        ->Utils.sync_future_map(get_track(p))
+        ->Future.map(a => {
+            BsPuppeteer.Browser.close(p->Page.browser)->ignore;
+            Js.log("we done, baby!");
+            a->Belt.List.keepMap(a => a);
+          });
+      }
+    );
+  p
+  // p
+  // ->FutureJs.fromPromise(Js.Console.error)
+  // ->Future.flatMap(Belt.Result.getExn);
 };

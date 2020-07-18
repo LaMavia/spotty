@@ -7,3 +7,5 @@ npm-debug.log
 .env
 src/*.bs.js
 *.part
+*.m4a
+output
