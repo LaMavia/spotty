@@ -68,12 +68,17 @@ let fetch_access_token = () => {
   )
   >>= Response.json
   >>- token_res_decode
+  >>- Belt.Result.getExn // Justification: should the decoding fail, 
+  >>| (err => {          // it means that the response is faulty, and thus unable to be used
+    {j|[Spotify]> access token fetch failed: $err|j}
+    ->Js.Exn.raiseError
+    ->raise
+  })
 }
 
 let fetch_playlist = (token, id) => {
   open Fetch;
   let token = token.access_token;
-  Js.log(token)
 
   fetchWithInit(
     make_playlist_url(id),

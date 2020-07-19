@@ -12,14 +12,15 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "bs-platform": "^8.0.3"
+    "bs-platform": "^8.0.3",
+    "reanalyze": "^2.8.0"
   },
   "dependencies": {
     "@ahrefs/bs-dotenv": "^2.0.0",
     "bs-fetch": "^0.6.2",
     "bs-puppeteer": "^0.13.0",
     "bs-webapi": "^0.17.1",
-    "child-reprocess": "^0.1.1",
+    "child-reprocess": "^0.1.2",
     "decco": "^1.2.1",
     "dotenv": "^8.2.0",
     "isomorphic-fetch": "^2.2.1",

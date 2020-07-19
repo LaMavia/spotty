@@ -16,7 +16,7 @@ let (||=) = Future.map;
 /**
  * `Future.flatMap` operator
  */
-let (||-) = Future.flatMap
+let (||-) = Future.flatMap;
 
 let int_of_bool = p => if (p) {1} else {0};
 
@@ -27,10 +27,12 @@ let make_dict: (string, string) => array(string) =
   (a, b) => {
     open Belt_SetString;
 
-    let aux = a => a->Js.String2.split("")->Belt.Array.reduce(empty, add);
+    let aux = a => 
+      a -> Js.String2.split("")
+        -> Belt.Array.reduce(empty, add);
 
-    let va = aux(a);
-    let vb = aux(b);
+    let va  = aux(a);
+    let vb  = aux(b);
 
     union(va, vb)->toArray;
   };
@@ -71,7 +73,7 @@ let cos: ((array(int), array(int))) => option(float) =
               (
                 dp +. ai *. bi, 
                 sa +. ai ** 2.0, 
-                sb +. bi ** 2.0
+                sb +. bi ** 2.0,
               );
             },
           );
@@ -85,33 +87,31 @@ let cos: ((array(int), array(int))) => option(float) =
   };
 
 let sync_future_consume = (items, f) => {
-  let rec aux = (a, xs) => 
+  let rec aux = (a, xs) =>
     switch (xs) {
-    | []         => 
-      Future.value(a)
+    | [] => Future.value(a)
     | [h, ...rs] =>
-      f(h) -> Future.map(a => (a, rs))
-           -> Future.flatMap(((a, rs)) => aux(a, rs))
-    }
+      f(h)
+      ->Future.map(a => (a, rs))
+      ->Future.flatMap(((a, rs)) => aux(a, rs))
+    };
 
   let [hd, ...rs] = items;
-  f(hd) -> Future.flatMap(aux(_, items))
+  f(hd)->Future.flatMap(aux(_, items));
 };
 
 let sync_future_map = (items, f) => {
-  let rec aux = (ys, xs) => 
+  let rec aux = (ys, xs) =>
     switch (xs) {
-    | []         => 
-      Future.value(ys)
+    | [] => 
+      ys->List.rev->Future.value
     | [h, ...rs] =>
-      f(h) -> Future.map(a => (a, rs))
-           -> Future.flatMap(((a, rs)) => aux([a] @ ys, rs))
-    }
+      f(h)->Future.flatMap(a => aux([a] @ ys, rs))
+    };
 
   let [hd, ...rs] = items;
-  f(hd) -> Future.flatMap(a => aux([a], rs))
+  f(hd)->Future.flatMap(a => aux([a], rs));
 };
-
 
 /**
  * Folds a list into a tuple of the given value and an list element
@@ -119,22 +119,36 @@ let sync_future_map = (items, f) => {
 let foldl1h = (arr, a, f) => {
   let rec aux = (acc, xs) => {
     switch (xs) {
-      | [hd, ...rs] => aux(f(acc, hd), rs)
-      | _ => acc
-    }
-  }
+    | [hd, ...rs] => aux(f(acc, hd), rs)
+    | _ => acc
+    };
+  };
 
   switch (arr) {
-    | [] => None
-    | [hd, ...rs] => Some(aux((a, hd), rs))
+  | [] => None
+  | [hd, ...rs] => Some(aux((a, hd), rs))
   };
-}
+};
 
 let foldl1_arr = (arr, f) => {
-  let h = arr[0]
-  let rs = Belt.Array.sliceToEnd(arr, 1)
+  let h  = arr[0];
+  let rs = Belt.Array.sliceToEnd(arr, 1);
 
-  Belt.Array.reduce(rs, h, f)
-}
+  Belt.Array.reduce(rs, h, f);
+};
 
-let const = a => a
+let const = a => a;
+
+[@bs.val] external console_clear: unit => unit = "console.clear";
+
+module ReadLine = {
+  type t = ChildReprocess.StdStream.Readable.t;
+
+  [@bs.val] external std_out: t = "process.stdout";
+
+  [@bs.val] [@bs.module "readline"]
+  external clear_line: t => unit = "clearLine";
+
+  [@bs.val] [@bs.module "readline"]
+  external cursor_to: (t, int) => unit = "cursorTo";
+};

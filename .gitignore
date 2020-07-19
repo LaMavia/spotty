@@ -9,3 +9,4 @@ src/*.bs.js
 *.part
 *.m4a
 output
+out*
