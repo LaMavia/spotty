@@ -1,14 +1,6 @@
 [%raw "require('isomorphic-fetch')"];
-open ChildReprocess.Util;
-open ChildReprocess.StdStream;
 open Utils;
 Dotenv.config();
-
-/**
- * Notes:
- * 1. clean up the `genExn` shit-storm
- * 3?. include videos' views in similarity metrics
- */
 
 let run = (playlist_url, output_dir) => {
   open Belt.Option; 
@@ -34,9 +26,7 @@ let run = (playlist_url, output_dir) => {
 let main = () => {
   switch (Node_process.argv) {
   | [|_node, _script, url, output|] => run(url, output)
-  | x =>
-    Js.log(x);
-
+  | _ =>
     "Usage: spotty <playlist_url> <output_dir_path>"
     -> Js.Exn.raiseError
     -> raise

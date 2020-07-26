@@ -18,18 +18,24 @@ let (||=) = Future.map;
  */
 let (||-) = Future.flatMap;
 
+let const = a => a;
 let int_of_bool = p => if (p) {1} else {0};
 
 // Converts a function of two elements into a function of a tuple
 let uncurry: (('a, 'b) => 'c, ('a, 'b)) => 'c = (f, (a, b)) => f(a, b);
+
+let split_pre_vec = a => 
+      a -> Js.String2.toLocaleLowerCase
+        -> Js.String2.splitByRe([%re "/\s*/g"]) // [\s\.,\&\/\\\]+
+        -> Belt.Array.keepMap(const)
 
 let make_dict: (string, string) => array(string) =
   (a, b) => {
     open Belt_SetString;
 
     let aux = a => 
-      a -> Js.String2.split("")
-        -> Belt.Array.reduce(empty, add);
+      split_pre_vec(a)
+      -> Belt.Array.reduce(empty, add);
 
     let va  = aux(a);
     let vb  = aux(b);
@@ -44,7 +50,9 @@ let vectors_of_words: ((string, string)) => (array(int), array(int)) =
     let count = (tx, a) =>
       reduce(tx, 0, (acc, b) => acc + int_of_bool(a == b));
 
-    let aux = (dict, a) => dict->map(count(a->Js.String2.split("")));
+    let aux = (dict, a) => {
+      dict->map(count(split_pre_vec(a)))
+    };
 
     let dict = make_dict(a, b);
     (a, b) <%> aux(dict);
@@ -85,6 +93,12 @@ let cos: ((array(int), array(int))) => option(float) =
       };
     };
   };
+
+let normalize_title = title => {
+      open Js.String2;
+      title -> toLocaleLowerCase
+            -> replaceByRe(Regex.yt_title_debris, "")
+    }
 
 let sync_future_consume = (items, f) => {
   let rec aux = (a, xs) =>
@@ -137,8 +151,6 @@ let foldl1_arr = (arr, f) => {
   Belt.Array.reduce(rs, h, f);
 };
 
-let const = a => a;
-
 [@bs.val] external console_clear: unit => unit = "console.clear";
 
 module ReadLine = {
@@ -152,3 +164,21 @@ module ReadLine = {
   [@bs.val] [@bs.module "readline"]
   external cursor_to: (t, int) => unit = "cursorTo";
 };
+
+let regexify = str => {
+  open Js.String2;
+  let escaped = 
+    str -> trim
+        -> replaceByRe([%re "/\(/g"], "\(")
+        -> replaceByRe([%re "/\)/g"], "\)")
+        -> replaceByRe([%re "/\[/g"], "\[")
+        -> replaceByRe([%re "/\]/g"], "\]")
+        -> replaceByRe([%re "/\./g"], "\.")
+        -> replaceByRe([%re "/\?/g"], "\?")
+        -> replaceByRe([%re "/\s+/g"], ")(")
+
+  let escaped = {j|($escaped)|j}
+  // Js.log(escaped)
+
+  Js.Re.fromStringWithFlags(escaped, ~flags="gi")
+}

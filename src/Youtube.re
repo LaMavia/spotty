@@ -1,45 +1,14 @@
 open Utils;
 
 type track = {
-  title: string,
-  url: string,
+  title   : string,
+  url     : string,
   duration: int,
 };
 
-let get_track: (BsPuppeteer.Page.t, Spotify.track) => Future.t(option(track)) =
-  (p, tr) => {
-    open BsPuppeteer;
-    open Webapi;
-
-    let title          = tr.name;
-    let artist         = tr.album.artists[0].name;
-      
-    let title          = {j|$title $artist|j};
-    let duration       = tr.duration_ms;
-
-    let time_selector  = "[aria-label].ytd-thumbnail-overlay-time-status-renderer";
-    let title_selector = "a#video-title";
-
-    let get_best_track = ((acc_score, acc_t), t) => {
-      let dt    = abs(duration - t.duration)->float_of_int;
-      let t_cos =
-        (acc_t.title, t.title)
-        ->vectors_of_words
-        ->cos
-        ->Belt.Option.getWithDefault(0.0);
-
-      let score = t_cos /. dt;
-
-      if (score > acc_score) {
-        (score, t);
-      } else {
-        (acc_score, acc_t);
-      };
-    };
-
-    let extract_video_info = (body, title_selector, time_selector) => {
+let extract_video_info = (body, title_selector, time_selector) => {
       open Js.Array2;
-      open Dom;
+      open Webapi.Dom;
 
       // Using javascript bindings due to the lack of 
       // reason-specific packages (Array, Belt etc.) in browser context
@@ -67,21 +36,58 @@ let get_track: (BsPuppeteer.Page.t, Spotify.track) => Future.t(option(track)) =
       (title_link, duration);
     };
 
+let get_track: (BsPuppeteer.Page.t, Spotify.track) => Future.t(option(track)) =
+  (p, tr) => {
+    open BsPuppeteer;
+
+    let title          = tr.name;
+    let artist         = tr.album.artists
+                         -> Belt.Array.reduce("", (a, art) => {
+                           let name = art.name;
+                           {j|$a $name|j}
+                         })
+
+    let title          = {j|$artist - $title|j};
+    let title_lc       = title->normalize_title
+    let title_regex    = title_lc->regexify;
+    let duration       = tr.duration_ms;
+
+    let time_selector  = "[aria-label].ytd-thumbnail-overlay-time-status-renderer";
+    let title_selector = "a#video-title";
+
+    let get_best_track = ((acc_score, acc_t), t) => {
+      let title    = normalize_title(t.title)
+      let dt       = abs(t.duration - duration) -> float_of_int;
+      let t_cos    = (title_lc, title)
+                     ->vectors_of_words
+                     ->cos
+                     ->Belt.Option.getWithDefault(0.0); 
+
+      let score    = t_cos /. (1.0 +. exp(dt));
+      let matches  = Js.Re.test_(title_regex, title)
+
+      if (score > acc_score && matches) {
+        (score, t);
+      } else {
+        (acc_score, acc_t);
+      };
+    };
+
     let promise_tracks =
-      p->Page.goto(
-        {j|https://www.youtube.com/results?sp=EgIQAQ%253D%253D&search_query=$title|j},
+      Page.goto(
+        p,
+        {j|https://www.youtube.com/results?sp=EgIQAQ%253D%253D&search_query=$title_lc|j},
         ~options=Navigation.makeOptions(~waitUntil=`networkidle0, ()),
         (),
       )
-      >>= (_ => Page.waitForSelector(p, time_selector, ()))
-      >>= (_ => Page.selectOneEval2(
+      >>= _ => Page.waitForSelector(p, time_selector, ())
+      >>= _ => Page.selectOneEval2(
              p,
              "body",
              extract_video_info,
              title_selector,
              time_selector,
            )
-          )
       >>- uncurry(Belt.Array.zip)
       >>- Belt.Array.map(_, (((title, url), duration)) =>
             { title
@@ -99,9 +105,10 @@ let get_track: (BsPuppeteer.Page.t, Spotify.track) => Future.t(option(track)) =
     ||= (
       a =>
         switch (a) {
-        | Some((_c_t, t)) =>
+        | Some((_, t)) =>
           let url = t.url;
-          Js.log({j|[Found] $title ($url)|j})
+          let title_original = t.title;
+          Js.log({j|[Found] $title ($title_original ; $url)|j})
           
           Some({...t, title});
 
@@ -116,16 +123,18 @@ let get_playlist = (res: Spotify.playlist_res) => {
 
   Puppeteer.launch()
   >>= Browser.newPage
-  >>- (
+  >>- 
     p => {
       res.items
       ->List.fromArray
       ->List.map(item => item.track)
       ->Utils.sync_future_map(get_track(p))
-      ->Future.map(tracks => {
-          BsPuppeteer.Browser.close(p->Page.browser)->ignore;
-          tracks->Belt.List.keepMap(const);
-        });
+      ->Future.tap(_ => 
+          BsPuppeteer.Browser.close(p->Page.browser)->ignore
+        )
+      ->Future.map(tracks => 
+          tracks->Belt.List.keepMap(const)
+        );
     }
-  )
+  
 };

@@ -1,10 +1,10 @@
 open Utils;
 
-type info = {
-  code: int,
-  ext: string,
-  size: int,
-};
+type info = 
+  { code : int
+  , ext  : string
+  , size : int
+  };
 
 /**
  * Queries youtube-dl for available formats of the given url. Returns one with the greatest **size**
@@ -51,11 +51,6 @@ let get_format = url =>
         if (Array.length(arr) >= 1) {
           arr
           ->foldl1_arr((a, b) =>
-              /*if (a.code == 140) {
-                a;
-              } else if (b.code == 140) {
-                b;
-              } else */
               if (a.size > b.size) {
                 a;
               } else {
@@ -68,14 +63,14 @@ let get_format = url =>
     });
   });
 
-let download = (dist, track, info) =>
+let download = (dist: string, track: Youtube.track, info: info) =>
   Future.make(resolve => {
     open ChildReprocess;
     open StdStream;
     open Youtube;
 
     let dist    = Regex.normalize_dist(dist);
-    let title   = track.title;
+    let title   = track.title; 
     let ext     = info.ext;
     let code    = info.code;
     let cp      = spawn(
@@ -88,19 +83,19 @@ let download = (dist, track, info) =>
                     |], 
                     ()
                   );
-    let std_out = cp->child_stdout;
 
-    std_out
+    child_stdout(cp)
     ->Readable.on_data(c => {
-        let c = c->Node_buffer.toString;
+      open Belt.Option;
+        let c = Node_buffer.toString(c)
 
         Js.Re.exec_(Regex.dl_download_status, c)
-        ->Belt.Option.flatMap(m =>
+        ->flatMap(m =>
             Js.Re.captures(m)
             ->Array.get(1)
             ->Js.Nullable.toOption
           )
-        ->Belt.Option.map(status => {
+        ->map(status => {
             ReadLine.clear_line(ReadLine.std_out);
             ReadLine.cursor_to(ReadLine.std_out, 0);
 
@@ -110,8 +105,5 @@ let download = (dist, track, info) =>
           })
         ->ignore;
       })
-    ->Readable.on_close(_ => {
-      Js.log("")
-      resolve()
-    });
+    ->Readable.on_close(_ => resolve() );
   });

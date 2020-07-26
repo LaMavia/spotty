@@ -35,7 +35,8 @@ let encode_base64 = s => Node_buffer.(
     -> toStringWithEncoding(`base64)
 );
 
-let make_playlist_url = (id: string) => {j|https://api.spotify.com/v1/playlists/$id/tracks?market=ES&fields=items.track(album(images%2C%20artists(name%2C%20href))%2C%20name%2C%20duration_ms)|j};
+let make_playlist_url = (id: string) => 
+  {j|https://api.spotify.com/v1/playlists/$id/tracks?market=ES&fields=items.track(album(images%2C%20artists(name%2C%20href))%2C%20name%2C%20duration_ms)|j};
 
 let make_auth = lazy({
   open Env;

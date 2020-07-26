@@ -5,6 +5,8 @@ let dl_is_yt              = [%re "/^\[youtube\]/i"];
 let dl_is_download_status = [%re "/^\[download\] \s+ \d+\.\d+%/"];
 let dl_download_status    = [%re "/(\d+\.\d+)%/"];
 let dl_is_audio_only      = [%re "/audio only/i"];
+let yt_title_debris       = [%re "/(-|\\\w|\s{2,}|[\(\)\[\]])/ig"]
+let yt_is_cover           = [%re "/\(cover\)/i"]
 
 let normalize_dist = dist => {
   open Js.Re;
